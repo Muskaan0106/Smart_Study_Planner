@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StudyDesk — Command Center</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,500&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+/* ─── DESIGN TOKENS ─────────────────────────────────────────────── */
+:root {
+  --cream:      #F5F0E8;
+  --cream2:     #EDE7D9;
+  --cream3:     #E3DBCA;
+  --stone:      #D6CCBA;
+  --espresso:   #2C1F14;
+  --bark:       #4A3728;
+  --walnut:     #6B4F38;
+  --terra:      #B85C3A;
+  --terra2:     #D4734F;
+  --sage:       #5C7A5C;
+  --muted:      #8A7A6A;
+  --muted2:     #B0A090;
+  --border:     rgba(44,31,20,0.10);
+  --border2:    rgba(44,31,20,0.18);
+  --shadow:     0 2px 16px rgba(44,31,20,0.10);
+  --shadow-md:  0 8px 32px rgba(44,31,20,0.14);
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Geist', system-ui, sans-serif;
+  --font-mono:    'Geist Mono', monospace;
+  --r: 12px; --r-sm: 8px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background:var(--cream); color:var(--espresso);
+  font-family:var(--font-body); font-size:14px; line-height:1.6;
+  min-height:100vh; overflow-x:hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(184,92,58,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 90%, rgba(92,122,92,0.04) 0%, transparent 60%);
+}
+.shell { position:relative; z-index:1; display:flex; height:100vh; overflow:hidden; }
+
+/* ─── SIDEBAR ────────────────────────────────────────────────────── */
+.sidebar {
+  width:64px; flex-shrink:0; background:var(--espresso);
+  display:flex; flex-direction:column; align-items:center;
+  padding:20px 0; gap:4px; z-index:10;
+}
+.sidebar-logo {
+  width:38px; height:38px; border-radius:10px; background:var(--terra);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; margin-bottom:16px; flex-shrink:0;
+  box-shadow:0 4px 12px rgba(184,92,58,0.4);
+}
+.nav-btn {
+  width:40px; height:40px; border-radius:10px; display:flex;
+  align-items:center; justify-content:center; cursor:pointer;
+  transition:all 0.18s; font-size:17px; border:none;
+  background:transparent; color:rgba(255,255,255,0.35); position:relative;
+}
+.nav-btn:hover { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.8); }
+.nav-btn.active { background:rgba(212,115,79,0.25); color:var(--terra2); }
+.nav-tooltip {
+  position:absolute; left:52px; background:var(--espresso);
+  color:#fff; font-size:11.5px; padding:4px 10px; border-radius:6px;
+  white-space:nowrap; pointer-events:none; opacity:0;
+  transition:opacity 0.15s; z-index:100; border:1px solid rgba(255,255,255,0.1);
+}
+.nav-btn:hover .nav-tooltip { opacity:1; }
+.sidebar-spacer { flex:1; }
+.streak-pill {
+  background:rgba(212,115,79,0.2); border-radius:8px;
+  padding:6px 0; width:40px; text-align:center; border:1px solid rgba(212,115,79,0.3);
+}
+.streak-num { font-family:var(--font-mono); font-size:14px; font-weight:500; color:var(--terra2); line-height:1; }
+.streak-fire { font-size:10px; }
+
+/* ─── LEFT PANEL ─────────────────────────────────────────────────── */
+.left-panel {
+  width:300px; flex-shrink:0; background:var(--cream2);
+  border-right:1px solid var(--border); display:flex;
+  flex-direction:column; overflow:hidden;
+}
+.left-panel-inner { flex:1; overflow-y:auto; padding:20px 18px; }
+.left-panel-inner::-webkit-scrollbar { width:3px; }
+.left-panel-inner::-webkit-scrollbar-thumb { background:var(--stone); border-radius:2px; }
+
+/* ─── MAIN ───────────────────────────────────────────────────────── */
+.main { flex:1; overflow-y:auto; background:var(--cream); padding:24px 22px; }
+.main::-webkit-scrollbar { width:4px; }
+.main::-webkit-scrollbar-thumb { background:var(--stone); border-radius:2px; }
+
+/* ─── TYPOGRAPHY ────────────────────────────────────────────────── */
+.section-title {
+  font-family:var(--font-display); font-size:11px; font-weight:500;
+  text-transform:uppercase; letter-spacing:1.5px; color:var(--muted);
+  margin-bottom:12px; display:flex; align-items:center; gap:6px;
+}
+.section-title::after { content:''; flex:1; height:1px; background:var(--border); }
+.panel-title {
+  font-family:var(--font-display); font-size:13px; font-weight:500;
+  color:var(--bark); margin-bottom:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--border);
+}
+.dash-greeting { font-family:var(--font-display); font-size:26px; font-weight:500; line-height:1.2; }
+.dash-date { font-size:12px; color:var(--muted); margin-top:3px; }
+
+/* ─── CARDS ──────────────────────────────────────────────────────── */
+.card {
+  background:#fff; border:1px solid var(--border);
+  border-radius:var(--r); padding:16px; box-shadow:var(--shadow);
+}
+.card + .card { margin-top:12px; }
+
+/* ─── FORMS ──────────────────────────────────────────────────────── */
+.field { margin-bottom:12px; }
+.field label { display:block; font-size:11.5px; color:var(--muted); margin-bottom:5px; font-weight:500; }
+.field input, .field select {
+  width:100%; background:var(--cream); border:1px solid var(--border2);
+  border-radius:var(--r-sm); color:var(--espresso); font-family:var(--font-body);
+  font-size:13px; padding:8px 11px; outline:none;
+  transition:border-color 0.15s, box-shadow 0.15s; -webkit-appearance:none;
+}
+.field input:focus, .field select:focus {
+  border-color:var(--terra); box-shadow:0 0 0 3px rgba(184,92,58,0.1);
+}
+.field select option { background:#fff; }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+/* ─── BUTTONS ────────────────────────────────────────────────────── */
+.btn {
+  display:inline-flex; align-items:center; gap:6px; padding:8px 16px;
+  border-radius:var(--r-sm); font-family:var(--font-body); font-size:13px;
+  font-weight:500; cursor:pointer; border:none; transition:all 0.15s; outline:none;
+}
+.btn-primary { background:var(--espresso); color:var(--cream); }
+.btn-primary:hover { background:var(--bark); transform:translateY(-1px); box-shadow:var(--shadow); }
+.btn-secondary { background:transparent; color:var(--bark); border:1px solid var(--border2); }
+.btn-secondary:hover { background:var(--cream3); }
+.btn-terra { background:var(--terra); color:#fff; }
+.btn-terra:hover { background:var(--terra2); transform:translateY(-1px); }
+.btn-full { width:100%; justify-content:center; padding:10px; }
+.btn-sm { padding:5px 11px; font-size:12px; }
+.btn-ghost { background:none; border:none; color:var(--muted); font-size:12px; cursor:pointer; padding:3px 7px; border-radius:5px; font-family:var(--font-body); }
+.btn-ghost:hover { color:var(--espresso); background:var(--cream3); }
+/* Loading state */
+.btn[disabled] { opacity:0.55; cursor:not-allowed; transform:none !important; }
+
+/* ─── BADGES ─────────────────────────────────────────────────────── */
+.badge { padding:2px 8px; border-radius:20px; font-size:11px; font-weight:500; }
+.badge-hard   { background:rgba(184,92,58,0.1); color:var(--terra); }
+.badge-medium { background:rgba(92,122,92,0.12); color:var(--sage); }
+.badge-easy   { background:rgba(106,79,56,0.1); color:var(--walnut); }
+.badge-days   { background:rgba(44,31,20,0.07); color:var(--bark); }
+
+/* ─── SUBJECT LIST ───────────────────────────────────────────────── */
+.subj-item {
+  display:flex; align-items:center; gap:9px; background:var(--cream);
+  border:1px solid var(--border); border-radius:var(--r-sm);
+  padding:9px 11px; margin-bottom:6px; transition:all 0.15s;
+}
+.subj-item:hover { border-color:var(--border2); box-shadow:var(--shadow); }
+.subj-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.subj-name { flex:1; font-weight:500; font-size:13px; }
+.subj-score { font-family:var(--font-mono); font-size:10px; color:var(--muted); }
+
+/* ─── DASHBOARD LAYOUT ───────────────────────────────────────────── */
+.dash-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:22px; }
+.dash-top  { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; margin-bottom:14px; }
+.dash-mid  { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.dash-bottom { display:grid; grid-template-columns:1.1fr 1fr 0.9fr; gap:14px; }
+
+/* ─── TODAY PLAN ─────────────────────────────────────────────────── */
+.plan-item { margin-bottom:10px; }
+.plan-header { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.plan-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.plan-name { font-size:13.5px; font-weight:500; flex:1; }
+.plan-hours { font-family:var(--font-mono); font-size:13px; color:var(--muted); }
+.plan-bar-track { height:5px; background:var(--cream3); border-radius:3px; overflow:hidden; }
+.plan-bar-fill { height:100%; border-radius:3px; transition:width 1s cubic-bezier(0.4,0,0.2,1); }
+
+/* ─── RINGS ──────────────────────────────────────────────────────── */
+.rings-grid { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; }
+.ring-wrap { position:relative; width:72px; height:72px; }
+.ring-wrap svg { transform:rotate(-90deg); }
+.ring-bg { fill:none; stroke:var(--cream3); stroke-width:5; }
+.ring-fg { fill:none; stroke-width:5; stroke-linecap:round; transition:stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1); }
+.ring-label { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.ring-pct { font-family:var(--font-mono); font-size:13px; font-weight:500; line-height:1; }
+
+/* ─── HEATMAP ────────────────────────────────────────────────────── */
+.heatmap-row { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+.heatmap-label { font-size:11.5px; color:var(--muted); width:28px; font-family:var(--font-mono); }
+.heatmap-cells { display:flex; gap:3px; }
+.heatmap-cell { width:16px; height:16px; border-radius:3px; background:var(--cream3); transition:all 0.3s; }
+.heatmap-cell[data-level="1"] { background:rgba(184,92,58,0.2); }
+.heatmap-cell[data-level="2"] { background:rgba(184,92,58,0.4); }
+.heatmap-cell[data-level="3"] { background:rgba(184,92,58,0.65); }
+.heatmap-cell[data-level="4"] { background:rgba(184,92,58,0.9); }
+.heatmap-legend { display:flex; align-items:center; gap:4px; margin-top:8px; }
+.heatmap-legend-label { font-size:10.5px; color:var(--muted); }
+.heatmap-legend-cells { display:flex; gap:3px; }
+
+/* ─── AI ─────────────────────────────────────────────────────────── */
+.ai-msg {
+  background:var(--cream2); border:1px solid var(--border);
+  border-radius:var(--r-sm); padding:11px 13px; margin-bottom:8px;
+  font-size:13px; line-height:1.55; border-left:3px solid var(--terra);
+}
+.ai-msg.user { border-left-color:var(--walnut); }
+.ai-msg.loading { opacity:0.6; }
+.ai-msg-tag { font-size:10px; color:var(--terra); font-weight:500; margin-bottom:3px; letter-spacing:0.3px; text-transform:uppercase; }
+.ai-msg.user .ai-msg-tag { color:var(--walnut); }
+.ai-input-row { display:flex; gap:6px; margin-top:10px; }
+.ai-input {
+  flex:1; background:var(--cream); border:1px solid var(--border2);
+  border-radius:var(--r-sm); padding:7px 11px; font-size:13px;
+  font-family:var(--font-body); color:var(--espresso); outline:none;
+}
+.ai-input:focus { border-color:var(--terra); }
+.ai-history { max-height:160px; overflow-y:auto; margin-bottom:6px; }
+.ai-history::-webkit-scrollbar { width:2px; }
+.ai-history::-webkit-scrollbar-thumb { background:var(--stone); }
+
+/* ─── POMODORO ───────────────────────────────────────────────────── */
+.pomo-wrap { display:flex; flex-direction:column; align-items:center; padding:4px 0; }
+.pomo-ring { position:relative; width:110px; height:110px; margin-bottom:12px; }
+.pomo-ring svg { transform:rotate(-90deg); }
+.pomo-ring-bg { fill:none; stroke:var(--cream3); stroke-width:7; }
+.pomo-ring-fg { fill:none; stroke-width:7; stroke-linecap:round; transition:stroke-dashoffset 1s linear; }
+.pomo-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.pomo-time { font-family:var(--font-mono); font-size:22px; font-weight:500; letter-spacing:-1px; color:var(--espresso); }
+.pomo-mode { font-size:10px; color:var(--muted); margin-top:2px; letter-spacing:0.5px; text-transform:uppercase; }
+.pomo-controls { display:flex; gap:8px; }
+.pomo-stats { display:flex; gap:16px; margin-top:12px; }
+.pomo-stat { text-align:center; }
+.pomo-stat-val { font-family:var(--font-mono); font-size:15px; font-weight:500; color:var(--espresso); }
+.pomo-stat-lbl { font-size:10px; color:var(--muted); }
+
+/* ─── MOTIVATION ─────────────────────────────────────────────────── */
+.moti-card {
+  background:linear-gradient(135deg, var(--espresso) 0%, var(--bark) 100%);
+  color:var(--cream); border-radius:var(--r); padding:18px;
+  position:relative; overflow:hidden;
+}
+.moti-card::before { content:''; position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:rgba(212,115,79,0.15); }
+.moti-card::after  { content:''; position:absolute; bottom:-40px; left:10px; width:80px; height:80px; border-radius:50%; background:rgba(212,115,79,0.08); }
+.moti-quote { font-family:var(--font-display); font-style:italic; font-size:15px; line-height:1.55; margin-bottom:10px; position:relative; z-index:1; }
+.moti-author { font-size:11px; color:rgba(245,240,232,0.5); position:relative; z-index:1; }
+.moti-tip-label { font-size:10px; color:var(--terra2); font-weight:500; letter-spacing:0.5px; text-transform:uppercase; margin-bottom:6px; position:relative; z-index:1; }
+
+/* ─── MINI STATS ─────────────────────────────────────────────────── */
+.mini-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.mini-stat { background:var(--cream2); border-radius:var(--r-sm); padding:11px 13px; border:1px solid var(--border); }
+.mini-val { font-family:var(--font-mono); font-size:20px; font-weight:500; color:var(--espresso); }
+.mini-lbl { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ─── CHART ──────────────────────────────────────────────────────── */
+.chart-wrap { position:relative; height:130px; }
+
+/* ─── FOCUS OVERLAY ──────────────────────────────────────────────── */
+#focusOverlay {
+  position:fixed; inset:0; z-index:999; background:var(--cream);
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+}
+#focusOverlay.active { display:flex; }
+.focus-ring { position:relative; width:220px; height:220px; margin-bottom:32px; }
+.focus-ring svg { transform:rotate(-90deg); }
+.focus-center { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.focus-time { font-family:var(--font-mono); font-size:52px; font-weight:300; letter-spacing:-3px; color:var(--espresso); }
+.focus-mode-label { font-size:12px; color:var(--muted); margin-top:6px; letter-spacing:1px; text-transform:uppercase; }
+.focus-subject { font-family:var(--font-display); font-size:32px; font-weight:500; color:var(--espresso); margin-bottom:8px; text-align:center; }
+.focus-sub { font-size:14px; color:var(--muted); margin-bottom:36px; }
+.focus-controls { display:flex; gap:12px; }
+.focus-escape { position:fixed; top:24px; right:24px; }
+
+/* ─── GEN OVERLAY ────────────────────────────────────────────────── */
+#genOverlay {
+  position:fixed; inset:0; z-index:500; background:rgba(245,240,232,0.92);
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; backdrop-filter:blur(4px);
+}
+#genOverlay.active { display:flex; }
+.gen-spinner { width:40px; height:40px; border:3px solid var(--cream3); border-top-color:var(--terra); border-radius:50%; animation:spin 0.8s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.gen-steps { margin-top:16px; text-align:center; }
+.gen-step { font-size:13px; color:var(--muted); padding:4px 0; opacity:0; transition:opacity 0.4s; }
+.gen-step.show { opacity:1; }
+.gen-step.done { color:var(--sage); }
+
+/* ─── FLOATING TIMER ─────────────────────────────────────────────── */
+#floatTimer {
+  position:fixed; bottom:24px; right:24px; z-index:100; background:#fff;
+  border:1px solid var(--border2); border-radius:14px; padding:12px 16px;
+  box-shadow:var(--shadow-md); display:none; flex-direction:column;
+  align-items:center; gap:4px; min-width:120px; cursor:move; user-select:none;
+}
+#floatTimer.visible { display:flex; }
+.float-time { font-family:var(--font-mono); font-size:22px; font-weight:500; color:var(--espresso); }
+.float-mode { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+.float-controls { display:flex; gap:6px; margin-top:2px; }
+
+/* ─── TIMETABLE ──────────────────────────────────────────────────── */
+.timetable-row { display:flex; gap:8px; margin-bottom:6px; align-items:center; }
+.timetable-time { font-family:var(--font-mono); font-size:11px; color:var(--muted); width:50px; flex-shrink:0; }
+.timetable-block { flex:1; border-radius:6px; padding:7px 11px; font-size:12.5px; font-weight:500; cursor:grab; border:1px solid transparent; transition:all 0.15s; display:flex; align-items:center; gap:6px; }
+.timetable-block:hover { transform:translateX(3px); box-shadow:var(--shadow); }
+
+/* ─── STATUS INDICATOR ───────────────────────────────────────────── */
+#backendStatus {
+  display:flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--muted); margin-bottom:10px;
+  padding:5px 9px; background:var(--cream3); border-radius:6px;
+}
+.status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.status-dot.online  { background:var(--sage); }
+.status-dot.offline { background:var(--terra); }
+.status-dot.checking { background:var(--muted2); animation:pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ─── PROGRESS RANGE ─────────────────────────────────────────────── */
+.prog-range { display:flex; align-items:center; gap:8px; }
+.prog-range input { flex:1; }
+.prog-range-val { font-family:var(--font-mono); font-size:11px; color:var(--terra); min-width:30px; }
+
+/* ─── EMPTY / TOAST ──────────────────────────────────────────────── */
+.empty { text-align:center; padding:28px 16px; color:var(--muted); }
+.empty-icon { font-size:28px; margin-bottom:8px; }
+.empty-text { font-size:13px; }
+#toast {
+  position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(60px);
+  background:var(--espresso); color:var(--cream); border-radius:10px;
+  padding:10px 18px; font-size:13px; z-index:9999;
+  display:flex; align-items:center; gap:8px;
+  opacity:0; transition:all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  white-space:nowrap; pointer-events:none;
+}
+#toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+
+/* ─── ANIMATIONS ─────────────────────────────────────────────────── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.card { animation:fadeUp 0.4s ease both; }
+.card:nth-child(1){animation-delay:0.05s} .card:nth-child(2){animation-delay:0.10s}
+.card:nth-child(3){animation-delay:0.15s} .card:nth-child(4){animation-delay:0.20s}
+.card:nth-child(5){animation-delay:0.25s}
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:var(--stone); border-radius:2px; }
+input[type=range] { -webkit-appearance:none; height:4px; background:var(--cream3); border-radius:2px; border:none; padding:0; cursor:pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--terra); cursor:pointer; border:2px solid #fff; box-shadow:0 1px 4px rgba(0,0,0,0.1); }
+
+/* ═══════════════════════════════════════════════════════════════
+   AUTH OVERLAY
+═══════════════════════════════════════════════════════════════ */
+#authOverlay {
+  position:fixed; inset:0; z-index:2000;
+  display:flex;
+  background:var(--cream);
+}
+#authOverlay.hidden { display:none; }
+
+/* Left branding panel */
+.ao-left {
+  width:42%; background:var(--espresso);
+  display:flex; flex-direction:column;
+  justify-content:center; padding:52px 52px;
+  position:relative; overflow:hidden; flex-shrink:0;
+}
+.ao-left::before {
+  content:''; position:absolute; top:-80px; right:-80px;
+  width:280px; height:280px; border-radius:50%;
+  background:rgba(184,92,58,0.13); pointer-events:none;
+}
+.ao-left::after {
+  content:''; position:absolute; bottom:-100px; left:-60px;
+  width:240px; height:240px; border-radius:50%;
+  background:rgba(92,122,92,0.08); pointer-events:none;
+}
+.ao-brand {
+  display:flex; align-items:center; gap:11px; margin-bottom:44px;
+}
+.ao-brand-icon {
+  width:38px; height:38px; border-radius:9px;
+  background:var(--terra);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; flex-shrink:0;
+  box-shadow:0 4px 14px rgba(184,92,58,0.45);
+}
+.ao-brand-name {
+  font-family:var(--font-display); font-size:18px; font-weight:500;
+  color:var(--cream); letter-spacing:-0.3px;
+}
+.ao-brand-name em { color:var(--terra2); font-style:normal; }
+.ao-hero {
+  font-family:var(--font-display); font-size:30px; font-weight:500;
+  color:var(--cream); line-height:1.25; margin-bottom:12px;
+  position:relative; z-index:1;
+}
+.ao-hero em { color:var(--terra2); font-style:normal; }
+.ao-sub {
+  font-size:13.5px; color:rgba(245,240,232,0.48);
+  line-height:1.65; margin-bottom:36px; position:relative; z-index:1;
+}
+.ao-feature {
+  display:flex; align-items:flex-start; gap:12px;
+  margin-bottom:16px; position:relative; z-index:1;
+}
+.ao-feat-icon {
+  width:32px; height:32px; border-radius:8px;
+  background:rgba(245,240,232,0.07);
+  border:1px solid rgba(245,240,232,0.1);
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex-shrink:0; margin-top:1px;
+}
+.ao-feat-title {
+  font-size:13px; color:var(--cream); font-weight:500;
+  margin-bottom:1px; display:block;
+}
+.ao-feat-sub { font-size:11.5px; color:rgba(245,240,232,0.38); }
+
+/* Right form panel */
+.ao-right {
+  flex:1; display:flex; align-items:center;
+  justify-content:center; padding:32px 24px;
+  overflow-y:auto; background:var(--cream);
+}
+.ao-card { width:100%; max-width:400px; }
+
+/* Screen toggle */
+.ao-screen { display:none; }
+.ao-screen.active { display:block; }
+
+/* Typography */
+.ao-heading {
+  font-family:var(--font-display); font-size:23px; font-weight:500;
+  color:var(--espresso); margin-bottom:4px; letter-spacing:-0.2px;
+}
+.ao-tagline { font-size:13.5px; color:var(--muted); margin-bottom:26px; line-height:1.5; }
+
+/* Form fields */
+.ao-field { margin-bottom:14px; }
+.ao-field label {
+  display:block; font-size:11.5px; color:var(--muted);
+  margin-bottom:5px; font-weight:500; letter-spacing:0.2px;
+}
+.ao-field input {
+  width:100%; background:#fff; border:1px solid var(--border2);
+  border-radius:var(--r-sm); color:var(--espresso);
+  font-family:var(--font-body); font-size:13.5px;
+  padding:10px 13px; outline:none;
+  transition:border-color 0.15s, box-shadow 0.15s;
+}
+.ao-field input:focus {
+  border-color:var(--terra); box-shadow:0 0 0 3px rgba(184,92,58,0.1);
+}
+.ao-pwd-wrap { position:relative; }
+.ao-pwd-wrap input { padding-right:40px; }
+.ao-eye {
+  position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  cursor:pointer; color:var(--muted2); font-size:15px;
+  user-select:none; transition:color 0.15s; line-height:1;
+}
+.ao-eye:hover { color:var(--muted); }
+
+/* Buttons */
+.ao-btn {
+  width:100%; padding:11px; border-radius:var(--r-sm);
+  font-family:var(--font-body); font-size:14px; font-weight:500;
+  cursor:pointer; border:none; transition:all 0.15s; outline:none;
+  display:flex; align-items:center; justify-content:center; gap:7px;
+}
+.ao-btn-primary { background:var(--espresso); color:var(--cream); }
+.ao-btn-primary:hover { background:var(--bark); transform:translateY(-1px); box-shadow:var(--shadow); }
+.ao-btn-secondary {
+  background:transparent; color:var(--bark);
+  border:1px solid var(--border2); margin-top:10px;
+}
+.ao-btn-secondary:hover { background:var(--cream2); }
+.ao-btn[disabled] { opacity:0.5; cursor:not-allowed; transform:none !important; box-shadow:none !important; }
+
+/* Divider */
+.ao-divider {
+  display:flex; align-items:center; gap:10px;
+  margin:18px 0; font-size:12px; color:var(--muted2);
+}
+.ao-divider::before, .ao-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* Switch link */
+.ao-switch { text-align:center; margin-top:20px; font-size:13px; color:var(--muted); }
+.ao-switch a { color:var(--terra); text-decoration:none; font-weight:500; cursor:pointer; }
+.ao-switch a:hover { text-decoration:underline; }
+
+/* Messages */
+.ao-error {
+  background:rgba(184,92,58,0.08); border:1px solid rgba(184,92,58,0.25);
+  border-radius:var(--r-sm); padding:9px 12px; font-size:13px;
+  color:var(--terra); margin-bottom:14px;
+  display:none; line-height:1.45;
+}
+.ao-error.show { display:block; }
+.ao-success {
+  background:rgba(92,122,92,0.08); border:1px solid rgba(92,122,92,0.25);
+  border-radius:var(--r-sm); padding:9px 12px; font-size:13px;
+  color:var(--sage); margin-bottom:14px; display:none;
+}
+.ao-success.show { display:block; }
+
+/* Password strength */
+.ao-strength { height:3px; background:var(--cream3); border-radius:2px; margin-top:5px; overflow:hidden; }
+.ao-strength-bar { height:100%; border-radius:2px; width:0; transition:width 0.3s, background 0.3s; }
+.ao-strength-hint { font-size:11px; color:var(--muted2); margin-top:3px; }
+
+/* Signed-in avatar in sidebar */
+.ao-avatar-btn {
+  width:34px; height:34px; border-radius:50%;
+  background:var(--terra); color:#fff;
+  display:flex; align-items:center; justify-content:center;
+  font-size:12px; font-weight:500; cursor:pointer;
+  border:none; font-family:var(--font-body);
+  transition:opacity 0.15s; flex-shrink:0;
+  margin-top:8px;
+}
+.ao-avatar-btn:hover { opacity:0.8; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     AUTH OVERLAY  — hidden once user signs in
+════════════════════════════════════════════════════════════════ -->
+<div id="authOverlay">
+
+  <!-- Branding panel -->
+  <div class="ao-left">
+    <div class="ao-brand">
+      <div class="ao-brand-icon">📚</div>
+      <div class="ao-brand-name">Study<em>Flow</em></div>
+    </div>
+    <div class="ao-hero">Plan smarter.<br/>Study <em>better.</em></div>
+    <div class="ao-sub">
+      An AI-powered study command centre that builds your
+      personalised schedule, predicts burnout, and keeps you on track.
+    </div>
+    <div class="ao-feature">
+      <div class="ao-feat-icon">⚡</div>
+      <div>
+        <span class="ao-feat-title">Smart schedule generator</span>
+        <span class="ao-feat-sub">Priority scoring based on deadline &amp; difficulty</span>
+      </div>
+    </div>
+    <div class="ao-feature">
+      <div class="ao-feat-icon">🧠</div>
+      <div>
+        <span class="ao-feat-title">ML burnout predictor</span>
+        <span class="ao-feat-sub">Tells you your safe study hours for today</span>
+      </div>
+    </div>
+    <div class="ao-feature">
+      <div class="ao-feat-icon">🍅</div>
+      <div>
+        <span class="ao-feat-title">Pomodoro + study heatmap</span>
+        <span class="ao-feat-sub">Track sessions and visualise your patterns</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form panel -->
+  <div class="ao-right">
+    <div class="ao-card">
+
+      <!-- ── LOGIN ─────────────────────────────────────────────── -->
+      <div class="ao-screen active" id="aoLogin">
+        <div class="ao-heading">Welcome back</div>
+        <div class="ao-tagline">Sign in to your StudyFlow account.</div>
+
+        <div class="ao-error" id="aoLoginErr"></div>
+
+        <div class="ao-field">
+          <label>Email address</label>
+          <input type="email" id="aoLoginEmail" placeholder="you@email.com"
+            autocomplete="email" onkeydown="if(event.key==='Enter')authLogin()"/>
+        </div>
+        <div class="ao-field">
+          <label>Password</label>
+          <div class="ao-pwd-wrap">
+            <input type="password" id="aoLoginPwd" placeholder="Your password"
+              autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()"/>
+            <span class="ao-eye" onclick="authTogglePwd('aoLoginPwd',this)">👁</span>
+          </div>
+        </div>
+
+        <button class="ao-btn ao-btn-primary" id="aoLoginBtn" onclick="authLogin()">
+          Sign in →
+        </button>
+
+        <div class="ao-divider">or</div>
+        <button class="ao-btn ao-btn-secondary" onclick="authDemo()">
+          Continue without account (demo)
+        </button>
+
+        <div class="ao-switch">
+          No account yet?
+          <a onclick="authShow('aoSignup')">Create one — it's free</a>
+        </div>
+      </div>
+
+      <!-- ── SIGNUP ─────────────────────────────────────────────── -->
+      <div class="ao-screen" id="aoSignup">
+        <div class="ao-heading">Create account</div>
+        <div class="ao-tagline">Free forever. Takes under 2 minutes.</div>
+
+        <div class="ao-error"   id="aoSignupErr"></div>
+        <div class="ao-success" id="aoSignupOk"></div>
+
+        <div class="ao-field">
+          <label>Full name</label>
+          <input type="text" id="aoSignupName" placeholder="e.g. Alex Johnson" autocomplete="name"/>
+        </div>
+        <div class="ao-field">
+          <label>Email address</label>
+          <input type="email" id="aoSignupEmail" placeholder="you@email.com" autocomplete="email"/>
+        </div>
+        <div class="ao-field">
+          <label>Password</label>
+          <div class="ao-pwd-wrap">
+            <input type="password" id="aoSignupPwd" placeholder="At least 8 characters"
+              autocomplete="new-password" oninput="authStrength(this.value)"/>
+            <span class="ao-eye" onclick="authTogglePwd('aoSignupPwd',this)">👁</span>
+          </div>
+          <div class="ao-strength"><div class="ao-strength-bar" id="aoStrengthBar"></div></div>
+          <div class="ao-strength-hint" id="aoStrengthHint"></div>
+        </div>
+        <div class="ao-field">
+          <label>Confirm password</label>
+          <div class="ao-pwd-wrap">
+            <input type="password" id="aoSignupConfirm" placeholder="Repeat password"
+              autocomplete="new-password" onkeydown="if(event.key==='Enter')authSignup()"/>
+            <span class="ao-eye" onclick="authTogglePwd('aoSignupConfirm',this)">👁</span>
+          </div>
+        </div>
+
+        <button class="ao-btn ao-btn-primary" id="aoSignupBtn" onclick="authSignup()">
+          Create account →
+        </button>
+
+        <div class="ao-divider">or</div>
+        <button class="ao-btn ao-btn-secondary" onclick="authDemo()">
+          Continue without account (demo)
+        </button>
+
+        <div class="ao-switch">
+          Already have an account?
+          <a onclick="authShow('aoLogin')">Sign in</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<!-- /authOverlay -->
+
+<!-- FOCUS OVERLAY -->
+<div id="focusOverlay">
+  <button class="btn btn-secondary btn-sm focus-escape" onclick="exitFocus()">✕ Exit Focus</button>
+  <div style="font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:32px;">Focus Mode</div>
+  <div class="focus-ring">
+    <svg width="220" height="220" viewBox="0 0 220 220">
+      <circle cx="110" cy="110" r="96" fill="none" stroke="var(--cream3)" stroke-width="8"/>
+      <circle id="focusCircle" cx="110" cy="110" r="96" fill="none" stroke="var(--terra)" stroke-width="8"
+        stroke-linecap="round" stroke-dasharray="603" stroke-dashoffset="0"/>
+    </svg>
+    <div class="focus-center">
+      <div class="focus-time" id="focusTime">25:00</div>
+      <div class="focus-mode-label" id="focusModeLabel">Focus</div>
+    </div>
+  </div>
+  <div class="focus-subject" id="focusSubject">Study Session</div>
+  <div class="focus-sub">Stay in the zone. You've got this.</div>
+  <div class="focus-controls">
+    <button class="btn btn-primary" id="focusStartBtn" onclick="toggleFocusTimer()">▶ Start</button>
+    <button class="btn btn-secondary" onclick="resetFocusTimer()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- GEN OVERLAY -->
+<div id="genOverlay">
+  <div class="gen-spinner"></div>
+  <div style="font-family:var(--font-display);font-size:18px;color:var(--espresso);margin-top:16px;">Generating your plan…</div>
+  <div class="gen-steps">
+    <div class="gen-step" id="gs1">⚙️ Calculating priority scores…</div>
+    <div class="gen-step" id="gs2">📊 Allocating study hours…</div>
+    <div class="gen-step" id="gs3">🧠 Applying ML optimisation…</div>
+    <div class="gen-step" id="gs4">✅ Schedule ready.</div>
+  </div>
+</div>
+
+<!-- FLOATING TIMER -->
+<div id="floatTimer">
+  <div class="float-time" id="floatTime">25:00</div>
+  <div class="float-mode" id="floatMode">Focus</div>
+  <div class="float-controls">
+    <button class="btn btn-terra btn-sm" id="floatStartBtn" onclick="toggleTimer()">▶</button>
+    <button class="btn btn-secondary btn-sm" onclick="openFocus()">⛶</button>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">📚</div>
+    <button class="nav-btn active" data-tab="dashboard">🏠<span class="nav-tooltip">Dashboard</span></button>
+    <button class="nav-btn" data-tab="schedule">📅<span class="nav-tooltip">Schedule</span></button>
+    <button class="nav-btn" data-tab="analytics">📊<span class="nav-tooltip">Analytics</span></button>
+    <button class="nav-btn" data-tab="burnout">🧠<span class="nav-tooltip">Burnout Check</span></button>
+    <div class="sidebar-spacer"></div>
+    <div class="streak-pill">
+      <div class="streak-num" id="streakNum">0</div>
+      <div class="streak-fire">🔥</div>
+    </div>
+    <button class="ao-avatar-btn" id="aoAvatarBtn" onclick="authSignOut()" title="Sign out">?</button>
+  </aside>
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+    <div class="left-panel-inner">
+      <!-- Backend status indicator -->
+      <div id="backendStatus">
+        <div class="status-dot checking" id="statusDot"></div>
+        <span id="statusLabel">Connecting…</span>
+      </div>
+
+      <div class="panel-title">Add Subjects</div>
+      <div class="field">
+        <label>Subject Name</label>
+        <input type="text" id="sName" placeholder="e.g. Calculus, Physics…"/>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Deadline (days)</label>
+          <input type="number" id="sDays" placeholder="e.g. 5" min="1" max="60"/>
+        </div>
+        <div class="field">
+          <label>Difficulty</label>
+          <select id="sDiff">
+            <option value="3">Hard</option>
+            <option value="2" selected>Medium</option>
+            <option value="1">Easy</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Color</label>
+          <select id="sColor">
+            <option value="#B85C3A">Terracotta</option>
+            <option value="#5C7A5C">Sage</option>
+            <option value="#6B4F38">Walnut</option>
+            <option value="#7A6A9A">Lavender</option>
+            <option value="#3A6B7A">Teal</option>
+            <option value="#8A7A3A">Olive</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Hours/day</label>
+          <input type="number" id="sHours" value="5" min="1" max="16"/>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addSubject()" style="margin-bottom:16px;">
+        + Add Subject
+      </button>
+
+      <div class="section-title">Your Subjects</div>
+      <div id="subjList">
+        <div class="empty"><div class="empty-icon">📚</div><div class="empty-text">No subjects yet</div></div>
+      </div>
+      <div id="genBtnWrap" style="display:none;margin-top:14px;">
+        <button class="btn btn-terra btn-full" id="genBtn" onclick="triggerGenerate()" style="font-size:14px;padding:12px;">
+          ⚡ Generate Plan
+        </button>
+      </div>
+      <div id="progressSection" style="display:none;margin-top:20px;">
+        <div class="section-title">Progress</div>
+        <div id="progressSliders"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD TAB -->
+    <div id="tab-dashboard">
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting" id="greeting">Good morning ☀</div>
+          <div class="dash-date" id="dateLabel"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-secondary btn-sm" onclick="openFocus()">⛶ Focus Mode</button>
+          <button class="btn btn-secondary btn-sm" onclick="toggleFloatTimer()">🍅 Float Timer</button>
+        </div>
+      </div>
+      <div class="dash-top">
+        <div class="card">
+          <div class="section-title">📅 Today's Plan</div>
+          <div id="todayPlan"><div class="empty"><div class="empty-icon">📅</div><div class="empty-text">Generate a plan to see today's sessions</div></div></div>
+        </div>
+        <div class="card">
+          <div class="section-title">⏱ Pomodoro</div>
+          <div class="pomo-wrap">
+            <div class="pomo-ring">
+              <svg width="110" height="110" viewBox="0 0 110 110">
+                <circle class="pomo-ring-bg" cx="55" cy="55" r="46"/>
+                <circle class="pomo-ring-fg" id="pomoCircle" cx="55" cy="55" r="46"
+                  stroke="var(--terra)" stroke-dasharray="289" stroke-dashoffset="0"/>
+              </svg>
+              <div class="pomo-center">
+                <div class="pomo-time" id="pomoDisplay">25:00</div>
+                <div class="pomo-mode" id="pomoModeLabel">Focus</div>
+              </div>
+            </div>
+            <div class="pomo-controls">
+              <button class="btn btn-primary btn-sm" id="pomoStartBtn" onclick="toggleTimer()">▶ Start</button>
+              <button class="btn btn-secondary btn-sm" onclick="resetTimer()">↺</button>
+              <button class="btn btn-secondary btn-sm" onclick="skipTimer()">⏭</button>
+            </div>
+            <div class="field" style="margin-top:10px;width:100%">
+              <select id="pomoSubject" style="width:100%;background:var(--cream);border:1px solid var(--border2);border-radius:6px;font-size:12px;padding:6px 9px;outline:none;font-family:var(--font-body);color:var(--espresso);">
+                <option value="">— Subject —</option>
+              </select>
+            </div>
+            <div class="pomo-stats">
+              <div class="pomo-stat"><div class="pomo-stat-val" id="pomoSessions">0</div><div class="pomo-stat-lbl">Sessions</div></div>
+              <div class="pomo-stat"><div class="pomo-stat-val" id="pomoFocus">0m</div><div class="pomo-stat-lbl">Focus</div></div>
+              <div class="pomo-stat"><div class="pomo-stat-val" id="pomoBreaks">0</div><div class="pomo-stat-lbl">Breaks</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dash-mid">
+        <div class="card">
+          <div class="section-title">🎯 Subject Progress</div>
+          <div class="rings-grid" id="progressRings"><div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Add subjects first</div></div></div>
+        </div>
+        <div class="card">
+          <div class="section-title">✨ AI Assistant</div>
+          <div class="ai-history" id="aiHistory"></div>
+          <div class="ai-input-row">
+            <input class="ai-input" id="aiInput" placeholder="Ask for study advice…" onkeydown="if(event.key==='Enter')sendAI()"/>
+            <button class="btn btn-terra btn-sm" id="aiSendBtn" onclick="sendAI()">→</button>
+          </div>
+        </div>
+      </div>
+      <div class="dash-bottom">
+        <div class="card">
+          <div class="section-title">🔥 Study Heatmap</div>
+          <div id="heatmap"></div>
+        </div>
+        <div class="moti-card card" style="box-shadow:none;">
+          <div class="moti-tip-label">💡 Daily Tip</div>
+          <div class="moti-quote" id="motiQuote">"The secret of getting ahead is getting started."</div>
+          <div class="moti-author" id="motiAuthor">— Mark Twain</div>
+          <button class="btn btn-sm" style="margin-top:14px;background:rgba(255,255,255,0.12);color:var(--cream);border:1px solid rgba(255,255,255,0.15);font-size:11px;" onclick="nextMotivation()">Next tip ↻</button>
+        </div>
+        <div class="card">
+          <div class="section-title">📌 Stats</div>
+          <div class="mini-stats">
+            <div class="mini-stat"><div class="mini-val" id="statSubjects">0</div><div class="mini-lbl">Subjects</div></div>
+            <div class="mini-stat"><div class="mini-val" id="statTotalH">0h</div><div class="mini-lbl">Planned</div></div>
+            <div class="mini-stat"><div class="mini-val" id="statAvgProg">0%</div><div class="mini-lbl">Done</div></div>
+            <div class="mini-stat"><div class="mini-val" id="statPomos">0</div><div class="mini-lbl">Pomodoros</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE TAB -->
+    <div id="tab-schedule" style="display:none;">
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting">Schedule</div>
+          <div class="dash-date">Your optimised day-by-day plan · <span id="schedDaysLabel"></span></div>
+        </div>
+      </div>
+      <div id="schedContent"><div class="empty card"><div class="empty-icon">📅</div><div class="empty-text">Generate a plan first</div></div></div>
+    </div>
+
+    <!-- ANALYTICS TAB -->
+    <div id="tab-analytics" style="display:none;">
+      <div class="dash-header"><div class="dash-greeting">Analytics</div></div>
+      <div class="dash-top" style="margin-bottom:14px;">
+        <div class="card"><div class="section-title">Hours per subject</div><div class="chart-wrap"><canvas id="chartHours"></canvas></div></div>
+        <div class="card"><div class="section-title">Difficulty split</div><div class="chart-wrap"><canvas id="chartDiff"></canvas></div></div>
+      </div>
+      <div class="card"><div class="section-title">Daily study load</div><div class="chart-wrap" style="height:160px;"><canvas id="chartLoad"></canvas></div></div>
+    </div>
+
+    <!-- BURNOUT TAB -->
+    <div id="tab-burnout" style="display:none;">
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting">Burnout Check</div>
+          <div class="dash-date" id="burnoutModelLabel">Linear regression model · Synthetic training data</div>
+        </div>
+      </div>
+      <div class="dash-mid">
+        <div class="card">
+          <div class="section-title">Your inputs</div>
+          <div class="field">
+            <label>Sleep last night</label>
+            <div class="prog-range"><input type="range" id="bSleep" min="3" max="10" value="7" step="0.5" oninput="document.getElementById('bSleepV').textContent=this.value+'h'"/><span class="prog-range-val" id="bSleepV">7h</span></div>
+          </div>
+          <div class="field">
+            <label>Planned study hours</label>
+            <div class="prog-range"><input type="range" id="bStudy" min="1" max="14" value="5" step="0.5" oninput="document.getElementById('bStudyV').textContent=this.value+'h'"/><span class="prog-range-val" id="bStudyV">5h</span></div>
+          </div>
+          <div class="field">
+            <label>Breaks planned</label>
+            <div class="prog-range"><input type="range" id="bBreaks" min="0" max="10" value="3" oninput="document.getElementById('bBreaksV').textContent=this.value"/><span class="prog-range-val" id="bBreaksV">3</span></div>
+          </div>
+          <div class="field">
+            <label>Stress level (1–10)</label>
+            <div class="prog-range"><input type="range" id="bStress" min="1" max="10" value="5" oninput="document.getElementById('bStressV').textContent=this.value"/><span class="prog-range-val" id="bStressV">5</span></div>
+          </div>
+          <button class="btn btn-primary btn-full" id="burnoutBtn" onclick="runBurnout()" style="margin-top:8px;">🧠 Run Prediction</button>
+        </div>
+        <div class="card" id="burnoutResult">
+          <div class="empty"><div class="empty-icon">🧠</div><div class="empty-text">Fill inputs and run prediction</div></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+// API CLIENT
+// All calls go to /api/* (same origin in production).
+// Falls back to local computation if the backend is unreachable.
+// ═══════════════════════════════════════════════════════════════════
+const API = {
+  _online: false,
+
+  async _post(path, body) {
+    const r = await fetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error||`HTTP ${r.status}`); }
+    return r.json();
+  },
+
+  async _get(path) {
+    const r = await fetch(path);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  },
+
+  async health()    { return this._get('/api/health'); },
+  async schedule(subjects, hoursPerDay) {
+    return this._post('/api/schedule', { subjects, hours_per_day: hoursPerDay });
+  },
+  async burnout(params) { return this._post('/api/burnout', params); },
+  async suggestions(subjects, sched) { return this._post('/api/suggestions', { subjects, schedule: sched }); },
+  async loadProgress()  { return this._get('/api/progress'); },
+  async saveProgress(p) { return this._post('/api/progress', { progress: p }); },
+  async saveSession(s)  { return this._post('/api/sessions', s); },
+  async loadSessions()  { return this._get('/api/sessions'); },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+// STATE — localStorage as fast local cache, API as source of truth
+// ═══════════════════════════════════════════════════════════════════
+let subjects = JSON.parse(localStorage.getItem('sd_subj')||'[]');
+let schedule = JSON.parse(localStorage.getItem('sd_sched')||'{}');
+let progress = JSON.parse(localStorage.getItem('sd_prog')||'{}');
+let pomoData  = JSON.parse(localStorage.getItem('sd_pomo')||'{"sessions":0,"focusMin":0,"breaks":0}');
+let streak    = parseInt(localStorage.getItem('sd_streak')||'0');
+let heatData  = JSON.parse(localStorage.getItem('sd_heat')||'{}');
+
+function saveLocal() {
+  localStorage.setItem('sd_subj',   JSON.stringify(subjects));
+  localStorage.setItem('sd_sched',  JSON.stringify(schedule));
+  localStorage.setItem('sd_prog',   JSON.stringify(progress));
+  localStorage.setItem('sd_pomo',   JSON.stringify(pomoData));
+  localStorage.setItem('sd_streak', streak);
+  localStorage.setItem('sd_heat',   JSON.stringify(heatData));
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BACKEND HEALTH CHECK
+// ═══════════════════════════════════════════════════════════════════
+async function checkBackend() {
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  try {
+    await API.health();
+    API._online = true;
+    dot.className   = 'status-dot online';
+    label.textContent = 'Backend online';
+    // Sync server-side progress into local state
+    try {
+      const { progress: serverProg } = await API.loadProgress();
+      Object.assign(progress, serverProg);
+      saveLocal();
+      renderProgress(); renderRings(); renderStats();
+    } catch(_) {}
+    // Sync pomodoro session count
+    try {
+      const { sessions } = await API.loadSessions();
+      pomoData.sessions = sessions.filter(s=>s.type==='focus').length;
+      pomoData.breaks   = sessions.filter(s=>s.type==='break').length;
+      pomoData.focusMin = sessions.filter(s=>s.type==='focus').reduce((a,s)=>a+s.minutes,0);
+      saveLocal(); updatePomoUI();
+    } catch(_) {}
+  } catch(_) {
+    API._online = false;
+    dot.className   = 'status-dot offline';
+    label.textContent = 'Offline — local mode';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════════
+document.querySelectorAll('.nav-btn[data-tab]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    ['dashboard','schedule','analytics','burnout'].forEach(t => {
+      document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+    });
+    if (tab==='analytics') setTimeout(renderAnalytics, 50);
+  });
+});
+
+// Greeting handled inside initApp()
+
+// ═══════════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════════
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2600);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LOCAL PRIORITY SCORE (used for display; real scoring done by API)
+// ═══════════════════════════════════════════════════════════════════
+function priority(s) { return (s.diff*0.6) + (1/s.days*0.4); }
+
+// ═══════════════════════════════════════════════════════════════════
+// SUBJECTS
+// ═══════════════════════════════════════════════════════════════════
+function addSubject() {
+  const name  = document.getElementById('sName').value.trim();
+  const days  = parseInt(document.getElementById('sDays').value);
+  const diff  = parseInt(document.getElementById('sDiff').value);
+  const color = document.getElementById('sColor').value;
+  if (!name||!days||days<1) { toast('⚠ Fill in name and deadline'); return; }
+  const s = { id:Date.now(), name, days, diff, color,
+    diffLabel: diff===3?'Hard':diff===2?'Medium':'Easy' };
+  subjects.push(s);
+  if (!progress[s.id]) progress[s.id] = 0;
+  saveLocal();
+  renderSubjects(); renderProgress(); renderTodayPlan(); renderRings(); renderStats();
+  updatePomoSubjects();
+  document.getElementById('sName').value = '';
+  document.getElementById('sDays').value = '';
+  toast(`"${name}" added`);
+  // Async: get AI suggestion for new subject set
+  fetchSuggestionsAndShow();
+}
+
+function removeSubject(id) {
+  subjects = subjects.filter(s=>s.id!==id);
+  delete progress[id];
+  saveLocal();
+  renderSubjects(); renderProgress(); renderTodayPlan(); renderRings(); renderStats();
+  updatePomoSubjects();
+  toast('Removed');
+}
+
+function renderSubjects() {
+  const el      = document.getElementById('subjList');
+  const genWrap = document.getElementById('genBtnWrap');
+  const progSec = document.getElementById('progressSection');
+  if (!subjects.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📚</div><div class="empty-text">No subjects yet</div></div>`;
+    genWrap.style.display='none'; progSec.style.display='none'; return;
+  }
+  genWrap.style.display='block'; progSec.style.display='block';
+  const sorted = [...subjects].sort((a,b)=>priority(b)-priority(a));
+  el.innerHTML = sorted.map(s=>`
+    <div class="subj-item">
+      <div class="subj-dot" style="background:${s.color}"></div>
+      <div style="flex:1;">
+        <div class="subj-name">${s.name}</div>
+        <div style="display:flex;gap:5px;margin-top:3px;">
+          <span class="badge badge-${s.diffLabel.toLowerCase()}">${s.diffLabel}</span>
+          <span class="badge badge-days">${s.days}d</span>
+        </div>
+      </div>
+      <div class="subj-score">${priority(s).toFixed(2)}</div>
+      <button class="btn-ghost" onclick="removeSubject(${s.id})">✕</button>
+    </div>`).join('');
+}
+
+function renderProgress() {
+  const el = document.getElementById('progressSliders');
+  if (!subjects.length) { el.innerHTML=''; return; }
+  el.innerHTML = subjects.map(s=>`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+        <span style="font-weight:500;color:var(--espresso);">${s.name}</span>
+        <span style="font-family:var(--font-mono);color:var(--terra);">${progress[s.id]||0}%</span>
+      </div>
+      <div class="prog-range">
+        <input type="range" min="0" max="100" value="${progress[s.id]||0}" step="5"
+          oninput="updateProg(${s.id},this.value)"/>
+        <span class="prog-range-val" id="pv_${s.id}">${progress[s.id]||0}%</span>
+      </div>
+    </div>`).join('');
+}
+
+async function updateProg(id, val) {
+  progress[id] = parseInt(val);
+  document.getElementById('pv_'+id).textContent = val+'%';
+  renderRings(); renderStats();
+  saveLocal();
+  // Persist to backend
+  if (API._online) {
+    try { await API.saveProgress({ [id]: parseInt(val) }); } catch(_) {}
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCHEDULE GENERATION
+// Runs the animated overlay, then hits POST /api/schedule.
+// Falls back to local computation if backend is offline.
+// ═══════════════════════════════════════════════════════════════════
+function triggerGenerate() {
+  if (!subjects.length) { toast('⚠ Add subjects first'); return; }
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true;
+  const overlay = document.getElementById('genOverlay');
+  overlay.classList.add('active');
+  const steps = ['gs1','gs2','gs3','gs4'];
+  let i = 0;
+  function next() {
+    if (i < steps.length) {
+      document.getElementById(steps[i]).classList.add('show');
+      if (i>0) document.getElementById(steps[i-1]).classList.add('done');
+      i++; setTimeout(next, 700);
+    } else {
+      // Hit the API on the last animation step
+      generatePlan().finally(() => {
+        overlay.classList.remove('active');
+        steps.forEach(s => {
+          const el = document.getElementById(s);
+          el.classList.remove('show','done');
+        });
+        btn.disabled = false;
+      });
+    }
+  }
+  next();
+}
+
+async function generatePlan() {
+  const hpd = parseFloat(document.getElementById('sHours').value)||5;
+
+  if (API._online) {
+    // ── API path ────────────────────────────────────────────────────
+    try {
+      // Map frontend subject shape to API shape
+      const apiSubjects = subjects.map(s=>({
+        id: s.id, name: s.name, days: s.days,
+        difficulty: s.diff, color: s.color,
+      }));
+      const data = await API.schedule(apiSubjects, hpd);
+      schedule = data.schedule;
+
+      // Show backend suggestions in AI panel
+      if (data.suggestions?.length) {
+        data.suggestions.forEach(msg => addAIMsg('system', msg));
+      }
+
+      // Store priority scores returned by backend onto subject objects
+      if (data.priority_scores) {
+        subjects.forEach(s => {
+          if (data.priority_scores[s.name] !== undefined)
+            s._apiScore = data.priority_scores[s.name];
+        });
+      }
+    } catch(err) {
+      toast('⚠ API error — using local fallback');
+      console.warn('Schedule API error:', err);
+      generatePlanLocal(hpd);
+    }
+  } else {
+    // ── Local fallback ───────────────────────────────────────────────
+    generatePlanLocal(hpd);
+  }
+
+  // Update heatmap with planned hours
+  const today = new Date();
+  Object.keys(schedule).forEach(d => {
+    const date = new Date(today); date.setDate(today.getDate()+parseInt(d)-1);
+    const key = date.toISOString().split('T')[0];
+    heatData[key] = schedule[d].reduce((a,b)=>a+b.hours, 0);
+  });
+
+  streak++;
+  document.getElementById('streakNum').textContent = streak;
+  saveLocal();
+  renderTodayPlan(); renderSchedule(); renderHeatmap(); renderStats();
+  toast('⚡ Plan generated!');
+}
+
+function generatePlanLocal(hpd) {
+  const sorted  = [...subjects].sort((a,b)=>priority(b)-priority(a));
+  const maxDays = Math.max(...subjects.map(s=>s.days));
+  schedule = {};
+  for (let d=1; d<=maxDays; d++) {
+    const avail = sorted.filter(s=>s.days>=d);
+    if (!avail.length) continue;
+    const total = avail.reduce((a,s)=>a+priority(s), 0);
+    schedule[d] = avail.map(s=>({
+      subjectId: s.id, name: s.name, color: s.color, diffLabel: s.diffLabel,
+      hours: Math.max(0.5, parseFloat(((priority(s)/total)*hpd).toFixed(1))),
+    }));
+    const sum = schedule[d].reduce((a,b)=>a+b.hours, 0);
+    const factor = hpd/sum;
+    schedule[d].forEach(b => b.hours = Math.max(0.5, parseFloat((b.hours*factor).toFixed(1))));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// TODAY'S PLAN
+// ═══════════════════════════════════════════════════════════════════
+function renderTodayPlan() {
+  const el    = document.getElementById('todayPlan');
+  const today = schedule[1] || [];
+  if (!today.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">📅</div><div class="empty-text">Generate a plan to see today's sessions</div></div>`;
+    return;
+  }
+  const maxH = Math.max(...today.map(s=>s.hours));
+  el.innerHTML = today.map(s=>`
+    <div class="plan-item">
+      <div class="plan-header">
+        <div class="plan-dot" style="background:${s.color}"></div>
+        <div class="plan-name">${s.name}</div>
+        <div class="plan-hours">${s.hours}h</div>
+      </div>
+      <div class="plan-bar-track">
+        <div class="plan-bar-fill" style="width:${(s.hours/maxH)*100}%;background:${s.color};"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PROGRESS RINGS
+// ═══════════════════════════════════════════════════════════════════
+function renderRings() {
+  const el = document.getElementById('progressRings');
+  if (!subjects.length) {
+    el.innerHTML = `<div class="empty"><div class="empty-icon">🎯</div><div class="empty-text">Add subjects first</div></div>`;
+    return;
+  }
+  const r = 30, circ = 2*Math.PI*r;
+  el.innerHTML = subjects.map(s => {
+    const pct    = progress[s.id]||0;
+    const offset = circ*(1-pct/100);
+    return `<div style="text-align:center;">
+      <div class="ring-wrap">
+        <svg width="72" height="72" viewBox="0 0 72 72">
+          <circle class="ring-bg" cx="36" cy="36" r="${r}" stroke-width="5"/>
+          <circle class="ring-fg" cx="36" cy="36" r="${r}"
+            stroke="${s.color}" stroke-width="5" stroke-linecap="round"
+            stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+            style="transform:rotate(-90deg);transform-origin:center;"/>
+        </svg>
+        <div class="ring-label"><div class="ring-pct" style="color:${s.color}">${pct}%</div></div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${s.name}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// HEATMAP
+// ═══════════════════════════════════════════════════════════════════
+function renderHeatmap() {
+  const el      = document.getElementById('heatmap');
+  const days    = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const today   = new Date();
+  const todayDay = (today.getDay()+6)%7;
+  let html = '';
+  for (let i=0; i<7; i++) {
+    const date = new Date(today); date.setDate(today.getDate()-(todayDay-i));
+    const key   = date.toISOString().split('T')[0];
+    const hours = heatData[key]||0;
+    const level = hours>=6?4:hours>=4?3:hours>=2?2:hours>0?1:0;
+    const weeks = [];
+    for (let w=0; w<8; w++) {
+      const d2 = new Date(date); d2.setDate(date.getDate()-(7*(7-w)));
+      const k2 = d2.toISOString().split('T')[0];
+      const h2 = heatData[k2]||0;
+      const lv = h2>=6?4:h2>=4?3:h2>=2?2:h2>0?1:0;
+      weeks.push(`<div class="heatmap-cell" data-level="${lv}" title="${h2.toFixed(1)}h on ${k2}"></div>`);
+    }
+    weeks.push(`<div class="heatmap-cell" data-level="${level}" title="${hours.toFixed(1)}h"></div>`);
+    html += `<div class="heatmap-row">
+      <div class="heatmap-label">${days[i]}</div>
+      <div class="heatmap-cells">${weeks.join('')}</div>
+    </div>`;
+  }
+  html += `<div class="heatmap-legend"><div class="heatmap-legend-label">Less</div>
+    <div class="heatmap-legend-cells">${[0,1,2,3,4].map(l=>`<div class="heatmap-cell" data-level="${l}" style="width:12px;height:12px;"></div>`).join('')}</div>
+    <div class="heatmap-legend-label">More</div></div>`;
+  el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// SCHEDULE VIEW
+// ═══════════════════════════════════════════════════════════════════
+function renderSchedule() {
+  const el        = document.getElementById('schedContent');
+  const daysLabel = document.getElementById('schedDaysLabel');
+  const days      = Object.keys(schedule).sort((a,b)=>a-b);
+  if (!days.length) {
+    el.innerHTML = `<div class="empty card"><div class="empty-icon">📅</div><div class="empty-text">Generate a plan first</div></div>`;
+    return;
+  }
+  daysLabel.textContent = `${days.length} day plan`;
+  const today    = new Date();
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const timeSlots = ['8 AM','9 AM','10 AM','11 AM','12 PM','1 PM','2 PM','3 PM','4 PM','5 PM','6 PM'];
+  const cols = Math.min(days.length, 3);
+  el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:14px;">
+    ${days.slice(0,9).map(d=>{
+      const date    = new Date(today); date.setDate(today.getDate()+parseInt(d)-1);
+      const isToday = d==='1';
+      const sessions= schedule[d];
+      let slot = 0;
+      const rows = sessions.map((s,i)=>{
+        const dur = Math.max(1, Math.round(s.hours*2));
+        const row = `<div class="timetable-row">
+          <div class="timetable-time">${timeSlots[slot]||''}</div>
+          <div class="timetable-block" style="background:${s.color}15;border-color:${s.color}30;color:${s.color};">
+            <div style="width:4px;height:4px;border-radius:50%;background:${s.color};flex-shrink:0;"></div>
+            ${s.name} · ${s.hours}h
+          </div>
+        </div>`;
+        slot += dur; return row;
+      }).join('');
+      return `<div class="card" style="padding:14px;">
+        <div style="font-family:var(--font-display);font-size:12px;font-weight:500;color:${isToday?'var(--terra)':'var(--muted)'};text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+          ${dayNames[date.getDay()]} ${date.getDate()}/${date.getMonth()+1}
+          ${isToday?`<span style="font-size:9px;background:rgba(184,92,58,0.1);color:var(--terra);padding:2px 6px;border-radius:4px;">TODAY</span>`:''}
+        </div>
+        <div>${rows}</div>
+        <div style="font-size:11px;color:var(--muted);text-align:right;margin-top:4px;font-family:var(--font-mono);">
+          ${sessions.reduce((a,b)=>a+b.hours,0).toFixed(1)}h total
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════════════════════════
+function renderStats() {
+  document.getElementById('statSubjects').textContent = subjects.length;
+  const totalH = Object.values(schedule).flat().reduce((a,b)=>a+b.hours, 0);
+  document.getElementById('statTotalH').textContent  = totalH.toFixed(1)+'h';
+  const avgProg = subjects.length
+    ? Math.round(subjects.reduce((a,s)=>a+(progress[s.id]||0),0)/subjects.length) : 0;
+  document.getElementById('statAvgProg').textContent = avgProg+'%';
+  document.getElementById('statPomos').textContent   = pomoData.sessions;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// POMODORO
+// ═══════════════════════════════════════════════════════════════════
+let timerSec=25*60, timerTotal=25*60, timerRunning=false, timerBreak=false, timerInt=null;
+
+function updateTimerUI() {
+  const m = Math.floor(timerSec/60).toString().padStart(2,'0');
+  const s = (timerSec%60).toString().padStart(2,'0');
+  const display = `${m}:${s}`;
+  document.getElementById('pomoDisplay').textContent  = display;
+  document.getElementById('floatTime').textContent    = display;
+  document.getElementById('focusTime').textContent    = display;
+  document.getElementById('focusModeLabel').textContent = timerBreak?'Break':'Focus';
+  document.getElementById('pomoModeLabel').textContent  = timerBreak?'Break':'Focus';
+  document.getElementById('floatMode').textContent    = timerBreak?'Break':'Focus';
+  const pct = timerSec/timerTotal;
+  const pc  = 2*Math.PI*46;
+  document.getElementById('pomoCircle').style.strokeDashoffset = pc*pct;
+  document.getElementById('pomoCircle').style.stroke = timerBreak?'var(--sage)':'var(--terra)';
+  const fc = 2*Math.PI*96;
+  document.getElementById('focusCircle').style.strokeDashoffset = fc*pct;
+  document.getElementById('focusCircle').style.stroke = timerBreak?'var(--sage)':'var(--terra)';
+}
+
+function updatePomoUI() {
+  document.getElementById('pomoSessions').textContent = pomoData.sessions;
+  document.getElementById('pomoFocus').textContent    = pomoData.focusMin+'m';
+  document.getElementById('pomoBreaks').textContent   = pomoData.breaks;
+  document.getElementById('statPomos').textContent    = pomoData.sessions;
+}
+
+function toggleTimer() {
+  if (timerRunning) {
+    clearInterval(timerInt); timerRunning=false;
+    ['pomoStartBtn','focusStartBtn'].forEach(id=>document.getElementById(id).textContent='▶ Start');
+    document.getElementById('floatStartBtn').textContent='▶';
+  } else {
+    timerRunning=true;
+    ['pomoStartBtn','focusStartBtn'].forEach(id=>document.getElementById(id).textContent='⏸ Pause');
+    document.getElementById('floatStartBtn').textContent='⏸';
+    timerInt = setInterval(()=>{
+      if (timerSec>0) { timerSec--; updateTimerUI(); }
+      else {
+        clearInterval(timerInt); timerRunning=false;
+        if (!timerBreak) {
+          pomoData.sessions++;
+          pomoData.focusMin+=25;
+          const sub = document.getElementById('pomoSubject');
+          const subName = sub.options[sub.selectedIndex]?.text||'General';
+          // Update heatmap
+          const today = new Date().toISOString().split('T')[0];
+          heatData[today] = (heatData[today]||0)+0.42;
+          saveLocal(); renderHeatmap(); updatePomoUI();
+          // Persist session to backend
+          if (API._online) {
+            API.saveSession({ type:'focus', subject: subName==='— Subject —'?'General':subName, minutes:25 }).catch(()=>{});
+          }
+          toast('🍅 Focus session done! Take a break.');
+          timerBreak=true; timerSec=5*60; timerTotal=5*60;
+        } else {
+          pomoData.breaks++;
+          saveLocal(); updatePomoUI();
+          if (API._online) {
+            API.saveSession({ type:'break', subject:'Break', minutes:5 }).catch(()=>{});
+          }
+          toast('☕ Break over — back to work!');
+          timerBreak=false; timerSec=25*60; timerTotal=25*60;
+        }
+        ['pomoStartBtn','focusStartBtn'].forEach(id=>document.getElementById(id).textContent='▶ Start');
+        document.getElementById('floatStartBtn').textContent='▶';
+        updateTimerUI();
+      }
+    }, 1000);
+  }
+}
+
+function resetTimer() {
+  clearInterval(timerInt); timerRunning=false; timerBreak=false;
+  timerSec=25*60; timerTotal=25*60;
+  ['pomoStartBtn','focusStartBtn'].forEach(id=>document.getElementById(id).textContent='▶ Start');
+  document.getElementById('floatStartBtn').textContent='▶';
+  updateTimerUI();
+}
+
+function skipTimer() {
+  clearInterval(timerInt); timerRunning=false;
+  timerBreak=!timerBreak;
+  timerSec=timerBreak?5*60:25*60; timerTotal=timerSec;
+  document.getElementById('pomoStartBtn').textContent='▶ Start';
+  updateTimerUI();
+}
+
+function updatePomoSubjects() {
+  const sel = document.getElementById('pomoSubject');
+  sel.innerHTML = `<option value="">— Subject —</option>`+
+    subjects.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// FOCUS MODE
+// ═══════════════════════════════════════════════════════════════════
+function openFocus() {
+  const sub     = document.getElementById('pomoSubject');
+  const subName = sub.options[sub.selectedIndex]?.text||'Study Session';
+  document.getElementById('focusSubject').textContent = subName==='— Subject —'?'Study Session':subName;
+  document.getElementById('focusOverlay').classList.add('active');
+  updateTimerUI();
+}
+function exitFocus()       { document.getElementById('focusOverlay').classList.remove('active'); }
+function toggleFocusTimer(){ toggleTimer(); }
+function resetFocusTimer() { resetTimer(); }
+
+// ═══════════════════════════════════════════════════════════════════
+// FLOATING TIMER
+// ═══════════════════════════════════════════════════════════════════
+let floatVisible=false;
+function toggleFloatTimer() {
+  floatVisible=!floatVisible;
+  document.getElementById('floatTimer').classList.toggle('visible',floatVisible);
+}
+(function(){
+  const el = document.getElementById('floatTimer');
+  let ox=0,oy=0,sx=0,sy=0;
+  el.addEventListener('mousedown',e=>{
+    if(e.target.tagName==='BUTTON') return;
+    sx=e.clientX; sy=e.clientY; ox=el.offsetLeft; oy=el.offsetTop;
+    const mv=ev=>{el.style.right='auto';el.style.bottom='auto';el.style.left=(ox+ev.clientX-sx)+'px';el.style.top=(oy+ev.clientY-sy)+'px';};
+    const up=()=>{document.removeEventListener('mousemove',mv);document.removeEventListener('mouseup',up);};
+    document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up);
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// AI ASSISTANT
+// Sends to POST /api/suggestions when online; uses local rule-based
+// logic as fallback so the panel is never empty.
+// ═══════════════════════════════════════════════════════════════════
+const aiGeneral = [
+  "Use the Pomodoro technique — 25 min focus, 5 min break. Evidence-backed for sustained attention.",
+  "Review your most recent notes before each session to prime recall.",
+  "Teaching a concept aloud is one of the most effective retention techniques.",
+  "Prioritise sleep over late-night cramming — memory consolidation happens during deep sleep.",
+  "Break large topics into 20-minute micro-goals. Completion momentum keeps you going.",
+];
+
+function localAISuggest() {
+  const urgent = subjects.filter(s=>s.days<=2);
+  if (urgent.length) return `⚠ ${urgent.map(s=>`${s.name} (${s.days}d)`).join(', ')} — deadlines close. Front-load these today.`;
+  const hard = subjects.filter(s=>s.diff===3);
+  if (hard.length) return `${hard[0].name} is your hardest subject — start with it when energy is highest.`;
+  if (subjects.length) {
+    const top = [...subjects].sort((a,b)=>priority(b)-priority(a))[0];
+    return `Top priority: ${top.name} (score ${priority(top).toFixed(2)}). Focus here first.`;
+  }
+  return aiGeneral[Math.floor(Math.random()*aiGeneral.length)];
+}
+
+async function fetchSuggestionsAndShow() {
+  if (!subjects.length) return;
+  if (API._online) {
+    try {
+      const apiSubjects = subjects.map(s=>({ id:s.id, name:s.name, days:s.days, difficulty:s.diff, color:s.color }));
+      const { suggestions } = await API.suggestions(apiSubjects, schedule);
+      if (suggestions?.length) { suggestions.forEach(msg=>addAIMsg('system',msg)); return; }
+    } catch(_) {}
+  }
+  addAIMsg('system', localAISuggest());
+}
+
+function addAIMsg(type, text) {
+  const el  = document.getElementById('aiHistory');
+  const div = document.createElement('div');
+  div.className = `ai-msg${type==='user'?' user':''}`;
+  div.innerHTML = `<div class="ai-msg-tag">${type==='user'?'You':'AI Advisor'}</div>${text}`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function sendAI() {
+  const input = document.getElementById('aiInput');
+  const q     = input.value.trim();
+  if (!q) return;
+  addAIMsg('user', q);
+  input.value = '';
+  // Disable button while waiting
+  const btn = document.getElementById('aiSendBtn');
+  btn.disabled = true;
+
+  if (API._online) {
+    // Use /api/suggestions with the user's question baked into subjects context
+    try {
+      const apiSubjects = subjects.map(s=>({ id:s.id, name:s.name, days:s.days, difficulty:s.diff, color:s.color }));
+      const { suggestions } = await API.suggestions(apiSubjects, schedule);
+      btn.disabled = false;
+      // Pick the most relevant suggestion, or show all
+      const resp = suggestions?.[0] || localAISuggest();
+      addAIMsg('system', resp); return;
+    } catch(_) {}
+  }
+
+  // Local rule-based fallback
+  await new Promise(r=>setTimeout(r,350));
+  const ql = q.toLowerCase();
+  let resp = '';
+  if (ql.includes('break')||ql.includes('rest'))
+    resp = 'Take a 5-minute break now — step away, hydrate, and stretch.';
+  else if (ql.includes('hardest')||ql.includes('difficult'))
+    resp = subjects.filter(s=>s.diff===3).length
+      ? `Hardest subjects: ${subjects.filter(s=>s.diff===3).map(s=>s.name).join(', ')}.`
+      : 'No hard subjects added yet.';
+  else if (ql.includes('urgent')||ql.includes('deadline'))
+    resp = subjects.filter(s=>s.days<=2).length
+      ? `Urgent: ${subjects.filter(s=>s.days<=2).map(s=>s.name+' ('+s.days+'d)').join(', ')}.`
+      : 'No urgent deadlines right now — keep steady.';
+  else if (ql.includes('tip')||ql.includes('advice'))
+    resp = aiGeneral[Math.floor(Math.random()*aiGeneral.length)];
+  else
+    resp = localAISuggest();
+  addAIMsg('system', resp);
+  btn.disabled = false;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// MOTIVATION
+// ═══════════════════════════════════════════════════════════════════
+const motivations = [
+  {q:'"The secret of getting ahead is getting started."',              a:'— Mark Twain'},
+  {q:'"It always seems impossible until it\'s done."',                a:'— Nelson Mandela'},
+  {q:'"Success is the sum of small efforts, repeated day in, day out."',a:'— Robert Collier'},
+  {q:'"Don\'t watch the clock; do what it does. Keep going."',        a:'— Sam Levenson'},
+  {q:'"Study difficult subjects first. Your brain is sharpest early."',a:'— Cognitive Science'},
+  {q:'"An investment in knowledge pays the best interest."',           a:'— Benjamin Franklin'},
+  {q:'"The more that you read, the more things you will know."',       a:'— Dr. Seuss'},
+];
+let motiIdx = new Date().getDay() % motivations.length;
+// motiQuote/Author initialised inside initApp()
+function nextMotivation() {
+  motiIdx = (motiIdx+1) % motivations.length;
+  document.getElementById('motiQuote').textContent  = motivations[motiIdx].q;
+  document.getElementById('motiAuthor').textContent = motivations[motiIdx].a;
+}
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ANALYTICS
+// ═══════════════════════════════════════════════════════════════════
+let ch1,ch2,ch3;
+function renderAnalytics() {
+  if(ch1)ch1.destroy(); if(ch2)ch2.destroy(); if(ch3)ch3.destroy();
+  const tick = {color:'#8A7A6A',font:{family:"'Geist Mono',monospace",size:11}};
+  const grid = {color:'rgba(44,31,20,0.06)'};
+  const hoursMap = {};
+  Object.values(schedule).flat().forEach(s=>{hoursMap[s.name]=(hoursMap[s.name]||0)+s.hours;});
+  const colorMap = subjects.reduce((a,s)=>{a[s.name]=s.color;return a;},{});
+
+  ch1 = new Chart(document.getElementById('chartHours').getContext('2d'),{
+    type:'bar',
+    data:{ labels:Object.keys(hoursMap), datasets:[{
+      data:Object.values(hoursMap), backgroundColor:Object.keys(hoursMap).map(n=>colorMap[n]||'#B85C3A'),
+      borderRadius:6, borderWidth:0
+    }]},
+    options:{ plugins:{legend:{display:false}}, scales:{ x:{ticks:tick,grid:grid}, y:{ticks:tick,grid:grid} }}
+  });
+
+  const diffs={Easy:0,Medium:0,Hard:0};
+  subjects.forEach(s=>diffs[s.diffLabel]++);
+  ch2 = new Chart(document.getElementById('chartDiff').getContext('2d'),{
+    type:'doughnut',
+    data:{
+      labels:['Easy','Medium','Hard'],
+      datasets:[{data:[diffs.Easy,diffs.Medium,diffs.Hard],
+        backgroundColor:['#5C7A5C','#8A7A3A','#B85C3A'], borderWidth:0, hoverOffset:4}]
+    },
+    options:{ cutout:'65%', plugins:{legend:{display:true,position:'bottom',labels:{color:'#8A7A6A',font:{size:11}}}} }
+  });
+
+  const days = Object.keys(schedule).sort((a,b)=>a-b).slice(0,7);
+  ch3 = new Chart(document.getElementById('chartLoad').getContext('2d'),{
+    type:'line',
+    data:{
+      labels:days.map(d=>`Day ${d}`),
+      datasets:[{
+        data:days.map(d=>schedule[d].reduce((a,b)=>a+b.hours,0)),
+        fill:true, borderColor:'#B85C3A', backgroundColor:'rgba(184,92,58,0.08)',
+        pointBackgroundColor:'#B85C3A', tension:0.45, borderWidth:2
+      }]
+    },
+    options:{ plugins:{legend:{display:false}}, scales:{ x:{ticks:tick,grid:grid}, y:{ticks:tick,grid:grid} }}
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// BURNOUT CHECK
+// Calls POST /api/burnout (real ML model).
+// Falls back to client-side linear approximation if offline.
+// ═══════════════════════════════════════════════════════════════════
+async function runBurnout() {
+  const sleep  = parseFloat(document.getElementById('bSleep').value);
+  const study  = parseFloat(document.getElementById('bStudy').value);
+  const breaks = parseInt(document.getElementById('bBreaks').value);
+  const stress = parseInt(document.getElementById('bStress').value);
+
+  const btn = document.getElementById('burnoutBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+
+  let result;
+
+  if (API._online) {
+    try {
+      result = await API.burnout({
+        sleep, breaks, stress,
+        planned_hours: study,
+        num_subjects:  subjects.length || 3,
+      });
+      // Show model info from backend
+      if (result.model_info) {
+        document.getElementById('burnoutModelLabel').textContent = result.model_info;
+      }
+    } catch(err) {
+      console.warn('Burnout API error:', err);
+      result = null;
+    }
+  }
+
+  // Local fallback — mirrors backend logic exactly, including contradition prevention
+  if (!result) {
+    const rec  = Math.min(12, Math.max(1, 1.2+(sleep*0.65)+(breaks*0.35)-(stress*0.28)));
+    const warn = study > rec;
+    const warnFlags = (sleep < 6) || (stress >= 7) || (breaks < 2);
+    const allClear  = sleep >= 7 && stress <= 5 && breaks >= 2 && !warn;
+
+    let message;
+    if (warn) {
+      message = `You're planning ${study}h but your body can safely handle ~${rec.toFixed(1)}h today given your sleep and stress. Pushing past that raises burnout risk significantly.`;
+    } else if (warnFlags) {
+      message = `Your ${study}h plan fits within today's limit, but poor sleep or high stress means focus quality will drop faster than usual. Take breaks seriously and don't skip them.`;
+    } else {
+      message = `Your ${study}h plan looks solid for today. You're well within your safe limit of ${rec.toFixed(1)}h with good sleep and manageable stress.`;
+    }
+
+    const tips = [];
+    if (sleep < 5)       tips.push('💤 Critical: under 5h sleep severely impairs memory. A 20-min nap would help more than extra study time.');
+    else if (sleep < 6)  tips.push('💤 Under 6h sleep — cognitive performance drops noticeably. Keep sessions under 90 min each today.');
+    else if (sleep < 7)  tips.push('😴 Slightly below ideal sleep. You can study — just keep sessions under 90 min and take breaks.');
+    if (stress >= 9)     tips.push('🧘 Very high stress (9–10). Try 5 min of 4-7-8 breathing first: inhale 4s, hold 7s, exhale 8s.');
+    else if (stress >= 7)tips.push('🧘 High stress — cortisol impairs memory. A short walk before studying will improve retention.');
+    if (breaks < 1)      tips.push('☕ No breaks planned — focus drops sharply after 45 min. Add at least 2 breaks using the Pomodoro timer.');
+    else if (breaks < 2) tips.push('☕ Only 1 break planned. Add a second — the brain consolidates info during downtime, not just active study.');
+    if (warn)            tips.push(`⏱ ${study}h exceeds today's safe limit. Split into two blocks with a 30-min gap, or cut the second block.`);
+    if (allClear)        tips.push('✅ All conditions are good — solid sleep, low stress, breaks planned. Start with your hardest subject now.');
+    if (!tips.length)    tips.push('📖 Interleave subjects rather than blocking — alternating topics improves long-term retention.');
+
+    result = {
+      recommended_hours: rec,
+      planned_hours: study,
+      risk_pct:  Math.min(100, Math.round((study/rec)*50)),
+      risk_level: study/rec < 0.8 ? 'Low' : study/rec < 1.4 ? 'Moderate' : 'High',
+      over_limit: warn,
+      warning_flags: warnFlags,
+      message,
+      tips: tips.slice(0,3),
+    };
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🧠 Run Prediction';
+
+  const {
+    recommended_hours: rec,
+    planned_hours: pl,
+    risk_pct: risk,
+    risk_level: riskLevel,
+    over_limit: warn,
+    warning_flags: warnFlags,
+    message,
+    tips,
+  } = result;
+
+  // Colour logic: terra = over limit or high-warning, amber = borderline, sage = good
+  const hasWarning = warnFlags || warn;
+  const accentCol  = warn ? 'var(--terra)' : warnFlags ? '#A07030' : 'var(--sage)';
+  const bgCol      = warn ? 'rgba(184,92,58,0.06)' : warnFlags ? 'rgba(160,112,48,0.06)' : 'rgba(92,122,92,0.07)';
+  const borderCol  = warn ? 'rgba(184,92,58,0.2)'  : warnFlags ? 'rgba(160,112,48,0.2)'  : 'rgba(92,122,92,0.2)';
+  const riskCol    = risk >= 70 ? 'var(--terra)' : risk >= 40 ? '#A07030' : 'var(--sage)';
+
+  // Score breakdown rows for transparency
+  const scoreRows = [
+    { label: 'Sleep quality',  val: sleep,  max: 10,  icon: '💤', good: sleep >= 7,  bad: sleep < 6,
+      display: `${sleep}h`, note: sleep<6?'Low':'sleep>=7'?'Good':'OK' },
+    { label: 'Stress level',   val: stress, max: 10,  icon: '😓', good: stress<=4,   bad: stress>=7,
+      display: `${stress}/10`, note: stress>=7?'High':stress>=5?'Moderate':'Low' },
+    { label: 'Breaks planned', val: breaks, max: 10,  icon: '☕', good: breaks>=3,   bad: breaks<2,
+      display: `${breaks}`, note: breaks<1?'None':breaks<2?'Low':'Good' },
+  ];
+
+  document.getElementById('burnoutResult').innerHTML = \`
+    <!-- ── Header: Safe study hours ── -->
+    <div style="margin-bottom:16px;">
+      <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
+        How many hours can you safely study today?
+      </div>
+      <div style="display:flex;align-items:baseline;gap:10px;">
+        <div style="font-family:var(--font-mono);font-size:52px;font-weight:300;letter-spacing:-3px;color:\${accentCol};line-height:1;">\${rec.toFixed(1)}h</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.4;">
+          safe study time<br/>
+          <span style="font-size:11px;">based on your sleep, stress &amp; breaks</span>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+        <span>You planned</span>
+        <span style="font-family:var(--font-mono);font-size:14px;font-weight:500;color:\${accentCol};">\${pl}h</span>
+        <span>\${warn ? '— ⚠ over your limit' : warnFlags ? '— within limit, but watch conditions' : '— within your limit ✓'}</span>
+      </div>
+    </div>
+
+    <!-- ── Condition breakdown ── -->
+    <div style="margin-bottom:14px;">
+      <div style="font-family:var(--font-display);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+        Today's condition check
+      </div>
+      \${scoreRows.map(r => {
+        const c = r.bad ? 'var(--terra)' : r.good ? 'var(--sage)' : '#A07030';
+        const dot = r.bad ? '✕' : r.good ? '✓' : '~';
+        return \`<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--cream2);border-radius:7px;margin-bottom:5px;border:1px solid var(--border);">
+          <span style="font-size:14px;width:20px;text-align:center;">\${r.icon}</span>
+          <span style="flex:1;font-size:13px;">\${r.label}</span>
+          <span style="font-family:var(--font-mono);font-size:12px;color:var(--muted);">\${r.display}</span>
+          <span style="font-size:11px;font-weight:500;color:\${c};min-width:60px;text-align:right;">\${dot} \${r.note}</span>
+        </div>\`;
+      }).join('')}
+    </div>
+
+    <!-- ── Burnout risk bar ── -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:5px;">
+        <span>Burnout risk if you study \${pl}h today</span>
+        <span style="font-family:var(--font-mono);font-weight:500;color:\${riskCol};">\${risk}% · \${riskLevel}</span>
+      </div>
+      <div style="height:8px;background:var(--cream3);border-radius:4px;overflow:hidden;">
+        <div style="height:100%;width:\${risk}%;background:\${riskCol};border-radius:4px;transition:width 1s ease;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted2);margin-top:3px;">
+        <span>Low risk</span><span>High risk</span>
+      </div>
+    </div>
+
+    <!-- ── Summary message ── -->
+    <div style="background:\${bgCol};border:1px solid \${borderCol};border-radius:8px;padding:11px 13px;font-size:13px;color:\${accentCol};margin-bottom:14px;line-height:1.55;">
+      \${message}
+    </div>
+
+    <!-- ── Tips ── -->
+    <div style="font-family:var(--font-display);font-size:11px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+      What to do about it
+    </div>
+    \${(tips||[]).map(t => \`
+      <div style="display:flex;gap:10px;padding:9px 12px;background:var(--cream2);border-radius:8px;margin-bottom:6px;font-size:13px;border:1px solid var(--border);line-height:1.5;">
+        \${t}
+      </div>\`).join('')}
+  \`;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════════
+function authShow(screenId) {
+  document.querySelectorAll('.ao-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+  ['aoLoginErr','aoSignupErr','aoSignupOk'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+}
+
+function authTogglePwd(inputId, iconEl) {
+  const inp = document.getElementById(inputId);
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  iconEl.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+function authStrength(pwd) {
+  const bar  = document.getElementById('aoStrengthBar');
+  const hint = document.getElementById('aoStrengthHint');
+  if (!pwd) { bar.style.width='0'; hint.textContent=''; return; }
+  let score = 0;
+  if (pwd.length >= 8)            score++;
+  if (pwd.length >= 12)           score++;
+  if (/[A-Z]/.test(pwd))          score++;
+  if (/[0-9]/.test(pwd))          score++;
+  if (/[^A-Za-z0-9]/.test(pwd))   score++;
+  const lvls = [
+    {w:'20%',bg:'#E24B4A',t:'Very weak'},
+    {w:'40%',bg:'#D4734F',t:'Weak'},
+    {w:'60%',bg:'#BA7517',t:'Fair'},
+    {w:'80%',bg:'#639922',t:'Strong'},
+    {w:'100%',bg:'#3B6D11',t:'Very strong'},
+  ];
+  const l = lvls[Math.max(0, score-1)];
+  bar.style.width = l.w; bar.style.background = l.bg;
+  hint.textContent = l.t; hint.style.color = l.bg;
+}
+
+function authError(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.classList.add('show');
+}
+
+function authLogin() {
+  const email = document.getElementById('aoLoginEmail').value.trim();
+  const pwd   = document.getElementById('aoLoginPwd').value;
+  document.getElementById('aoLoginErr').classList.remove('show');
+  if (!email)               { authError('aoLoginErr', 'Please enter your email address.'); return; }
+  if (!email.includes('@')) { authError('aoLoginErr', 'Please enter a valid email address.'); return; }
+  if (!pwd)                 { authError('aoLoginErr', 'Please enter your password.'); return; }
+
+  const users = JSON.parse(localStorage.getItem('sf_users') || '[]');
+  const user  = users.find(u => u.email === email && u.password === pwd);
+  if (!user) {
+    authError('aoLoginErr', 'Incorrect email or password. No account yet? Create one below.');
+    return;
+  }
+  const btn = document.getElementById('aoLoginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  localStorage.setItem('sf_session', JSON.stringify({ email: user.email, name: user.name }));
+  setTimeout(() => authEnter(user.name), 550);
+}
+
+function authSignup() {
+  const name    = document.getElementById('aoSignupName').value.trim();
+  const email   = document.getElementById('aoSignupEmail').value.trim();
+  const pwd     = document.getElementById('aoSignupPwd').value;
+  const confirm = document.getElementById('aoSignupConfirm').value;
+  document.getElementById('aoSignupErr').classList.remove('show');
+  document.getElementById('aoSignupOk').classList.remove('show');
+
+  if (!name)                        { authError('aoSignupErr', 'Please enter your full name.'); return; }
+  if (!email || !email.includes('@')){ authError('aoSignupErr', 'Please enter a valid email address.'); return; }
+  if (pwd.length < 8)               { authError('aoSignupErr', 'Password must be at least 8 characters.'); return; }
+  if (pwd !== confirm)              { authError('aoSignupErr', 'Passwords do not match.'); return; }
+
+  const users = JSON.parse(localStorage.getItem('sf_users') || '[]');
+  if (users.find(u => u.email === email)) {
+    authError('aoSignupErr', 'An account with this email already exists. Sign in instead.');
+    return;
+  }
+  const btn = document.getElementById('aoSignupBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  users.push({ name, email, password: pwd, createdAt: new Date().toISOString() });
+  localStorage.setItem('sf_users', JSON.stringify(users));
+  localStorage.setItem('sf_session', JSON.stringify({ email, name }));
+
+  const ok = document.getElementById('aoSignupOk');
+  ok.textContent = 'Account created! Taking you to the app…'; ok.classList.add('show');
+  setTimeout(() => authEnter(name), 900);
+}
+
+function authDemo() {
+  localStorage.setItem('sf_session', JSON.stringify({ email: 'demo@studyflow.app', name: 'Demo User' }));
+  authEnter('Demo User');
+}
+
+function authEnter(name) {
+  // Set avatar initial
+  const initial = (name || '?')[0].toUpperCase();
+  const avatarBtn = document.getElementById('aoAvatarBtn');
+  avatarBtn.textContent = initial;
+  avatarBtn.title = `Signed in as ${name} · click to sign out`;
+  // Hide overlay, reveal app
+  document.getElementById('authOverlay').classList.add('hidden');
+  // Boot the dashboard
+  initApp();
+}
+
+function authSignOut() {
+  if (!confirm(`Sign out of StudyFlow?`)) return;
+  localStorage.removeItem('sf_session');
+  // Reset login form
+  document.getElementById('aoLoginEmail').value = '';
+  document.getElementById('aoLoginPwd').value = '';
+  const btn = document.getElementById('aoLoginBtn');
+  btn.disabled = false; btn.textContent = 'Sign in →';
+  document.getElementById('aoLoginErr').classList.remove('show');
+  authShow('aoLogin');
+  document.getElementById('authOverlay').classList.remove('hidden');
+}
+
+// ─── Check for existing session on load ───────────────────────────
+(function() {
+  const raw = localStorage.getItem('sf_session');
+  if (raw) {
+    try { authEnter(JSON.parse(raw).name); return; } catch(_) { localStorage.removeItem('sf_session'); }
+  }
+  // No session — overlay stays visible (default)
+})();
+
+// ═══════════════════════════════════════════════════════════════════
+// INIT — called by authEnter() after successful auth
+// ═══════════════════════════════════════════════════════════════════
+function initApp() {
+  // Greeting
+  const h = new Date().getHours();
+  document.getElementById('greeting').textContent =
+    h < 12 ? 'Good morning ☀️' : h < 17 ? 'Good afternoon 🌤' : 'Good evening 🌙';
+  document.getElementById('dateLabel').textContent =
+    new Date().toLocaleDateString('en-GB', {weekday:'long', month:'long', day:'numeric'});
+  document.getElementById('streakNum').textContent = streak;
+
+  // Motivation card
+  document.getElementById('motiQuote').textContent  = motivations[motiIdx].q;
+  document.getElementById('motiAuthor').textContent = motivations[motiIdx].a;
+
+  renderSubjects();
+  renderProgress();
+  renderTodayPlan();
+  renderRings();
+  renderHeatmap();
+  renderSchedule();
+  renderStats();
+  updatePomoSubjects();
+  updateTimerUI();
+
+  // Seed AI panel
+  addAIMsg('system', subjects.length ? localAISuggest() :
+    'Welcome! Add your subjects on the left to get personalised study recommendations.');
+
+  // Async: check backend, then refresh with server data
+  checkBackend();
+}
+</script>
+</body>
+</html>
